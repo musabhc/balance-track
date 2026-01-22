@@ -17,6 +17,8 @@ const state = {
   data: {
     salaries: [],
     expenses: [],
+    recurringExpenses: [],
+    installmentPlans: [],
     settings: { currency: 'TRY' }
   },
   selectedYear: new Date().getFullYear(),
@@ -37,6 +39,23 @@ const parseAmount = (value) => {
 
 const monthKey = (year, index) => `${year}-${String(index + 1).padStart(2, '0')}`;
 
+const parseMonthKey = (key) => {
+  const [year, month] = key.split('-').map(Number);
+  return { year, month };
+};
+
+const addMonths = (key, offset) => {
+  const { year, month } = parseMonthKey(key);
+  const date = new Date(year, month - 1 + offset, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const monthsBetween = (startKey, endKey) => {
+  const start = parseMonthKey(startKey);
+  const end = parseMonthKey(endKey);
+  return (end.year - start.year) * 12 + (end.month - start.month);
+};
+
 const createId = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
@@ -53,11 +72,75 @@ const getSalaryForMonth = (key) => {
   return amount;
 };
 
-const expensesForMonth = (key) =>
-  state.data.expenses.filter((expense) => expense.date && expense.date.startsWith(key));
+const manualExpensesForMonth = (key) =>
+  state.data.expenses
+    .filter((expense) => expense.date && expense.date.startsWith(key))
+    .map((expense) => ({ ...expense, source: 'manual' }));
 
-const expensesForYear = (year) =>
-  state.data.expenses.filter((expense) => expense.date && expense.date.startsWith(String(year)));
+const recurringExpensesForMonth = (key) =>
+  state.data.recurringExpenses
+    .filter((rule) => {
+      if (!rule.startMonth) {
+        return false;
+      }
+      if (rule.startMonth > key) {
+        return false;
+      }
+      if (rule.endMonth && rule.endMonth < key) {
+        return false;
+      }
+      return true;
+    })
+    .map((rule) => ({
+      id: rule.id,
+      date: `${key}-01`,
+      amount: rule.amount,
+      category: rule.category,
+      label: rule.label,
+      source: 'recurring'
+    }));
+
+const installmentExpensesForMonth = (key) =>
+  state.data.installmentPlans
+    .filter((plan) => {
+      if (!plan.startMonth || !plan.months) {
+        return false;
+      }
+      const endKey = addMonths(plan.startMonth, plan.months - 1);
+      return plan.startMonth <= key && key <= endKey;
+    })
+    .map((plan) => {
+      const index = monthsBetween(plan.startMonth, key) + 1;
+      const amount = plan.totalAmount / plan.months;
+      return {
+        id: plan.id,
+        date: `${key}-01`,
+        amount,
+        category: plan.category,
+        label: `${plan.label} (Taksit ${index}/${plan.months})`,
+        source: 'installment'
+      };
+    });
+
+const expensesForMonth = (key) => [
+  ...manualExpensesForMonth(key),
+  ...recurringExpensesForMonth(key),
+  ...installmentExpensesForMonth(key)
+];
+
+const expensesForYear = (year) => {
+  const entries = state.data.expenses
+    .filter((expense) => expense.date && expense.date.startsWith(String(year)))
+    .map((expense) => ({ ...expense, source: 'manual' }));
+
+  monthNames.forEach((_, index) => {
+    const key = monthKey(year, index);
+    entries.push(...recurringExpensesForMonth(key));
+    entries.push(...installmentExpensesForMonth(key));
+  });
+
+  return entries;
+};
 
 const totalExpensesForMonth = (key) =>
   expensesForMonth(key).reduce((sum, expense) => sum + expense.amount, 0);
@@ -75,6 +158,21 @@ const getYearRange = () => {
   state.data.expenses.forEach((expense) => {
     if (expense.date) {
       years.add(Number(expense.date.split('-')[0]));
+    }
+  });
+  state.data.recurringExpenses.forEach((rule) => {
+    if (rule.startMonth) {
+      years.add(Number(rule.startMonth.split('-')[0]));
+    }
+    if (rule.endMonth) {
+      years.add(Number(rule.endMonth.split('-')[0]));
+    }
+  });
+  state.data.installmentPlans.forEach((plan) => {
+    if (plan.startMonth && plan.months) {
+      years.add(Number(plan.startMonth.split('-')[0]));
+      const endKey = addMonths(plan.startMonth, plan.months - 1);
+      years.add(Number(endKey.split('-')[0]));
     }
   });
   const list = [...years].filter(Number.isFinite).sort((a, b) => a - b);
@@ -174,26 +272,28 @@ const renderSalaryList = () => {
   });
 };
 
+const sourceLabel = (source) => {
+  if (source === 'recurring') {
+    return 'Tekrarlayan';
+  }
+  if (source === 'installment') {
+    return 'Taksit';
+  }
+  return 'Tek sefer';
+};
+
 const renderExpenses = () => {
   const list = document.getElementById('expenseList');
   list.innerHTML = '';
-  const expenses = state.data.expenses
-    .filter((expense) => {
-      if (!expense.date) {
-        return false;
-      }
-      const [year, month] = expense.date.split('-');
-      if (Number(year) !== state.selectedYear) {
-        return false;
-      }
-      if (state.selectedMonth === 'all') {
-        return true;
-      }
-      return expense.date.startsWith(state.selectedMonth);
-    })
-    .sort((a, b) => b.date.localeCompare(a.date));
 
-  if (expenses.length === 0) {
+  const expenses =
+    state.selectedMonth === 'all'
+      ? expensesForYear(state.selectedYear)
+      : expensesForMonth(state.selectedMonth);
+
+  const sorted = expenses.sort((a, b) => b.date.localeCompare(a.date));
+
+  if (sorted.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'list-item';
     empty.textContent = 'Henüz harcama yok.';
@@ -201,7 +301,7 @@ const renderExpenses = () => {
     return;
   }
 
-  expenses.forEach((expense) => {
+  sorted.forEach((expense) => {
     const item = document.createElement('div');
     item.className = 'list-item';
     item.innerHTML = `
@@ -210,8 +310,9 @@ const renderExpenses = () => {
         <small>${expense.date} · ${expense.category || 'Genel'}</small>
       </div>
       <div class="list-actions">
+        <span class="tag">${sourceLabel(expense.source)}</span>
         <span>${formatCurrency(expense.amount)}</span>
-        <button class="icon-btn" data-id="${expense.id}">Sil</button>
+        <button class="icon-btn" data-id="${expense.id}" data-source="${expense.source}">Sil</button>
       </div>
     `;
     list.appendChild(item);
@@ -220,7 +321,98 @@ const renderExpenses = () => {
   list.querySelectorAll('button[data-id]').forEach((button) => {
     button.addEventListener('click', () => {
       const id = button.getAttribute('data-id');
-      state.data.expenses = state.data.expenses.filter((expense) => expense.id !== id);
+      const source = button.getAttribute('data-source');
+      if (source === 'recurring') {
+        state.data.recurringExpenses = state.data.recurringExpenses.filter((rule) => rule.id !== id);
+        showToast('Tekrarlayan harcama silindi.');
+      } else if (source === 'installment') {
+        state.data.installmentPlans = state.data.installmentPlans.filter((plan) => plan.id !== id);
+        showToast('Taksitli alım silindi.');
+      } else {
+        state.data.expenses = state.data.expenses.filter((expense) => expense.id !== id);
+      }
+      saveAndRender();
+    });
+  });
+};
+
+const renderRecurringList = () => {
+  const list = document.getElementById('recurringList');
+  list.innerHTML = '';
+  const sorted = [...state.data.recurringExpenses].sort((a, b) =>
+    a.startMonth.localeCompare(b.startMonth)
+  );
+
+  if (sorted.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'list-item';
+    empty.textContent = 'Tekrarlayan harcama yok.';
+    list.appendChild(empty);
+    return;
+  }
+
+  sorted.forEach((rule) => {
+    const item = document.createElement('div');
+    item.className = 'list-item';
+    const endText = rule.endMonth ? rule.endMonth : 'Süresiz';
+    item.innerHTML = `
+      <div>
+        <strong>${rule.label || 'Tekrarlayan harcama'}</strong>
+        <small>${rule.startMonth} → ${endText} · ${rule.category || 'Genel'}</small>
+      </div>
+      <div class="list-actions">
+        <span>${formatCurrency(rule.amount)}</span>
+        <button class="icon-btn" data-id="${rule.id}">Sil</button>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+
+  list.querySelectorAll('button[data-id]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const id = button.getAttribute('data-id');
+      state.data.recurringExpenses = state.data.recurringExpenses.filter((rule) => rule.id !== id);
+      saveAndRender();
+    });
+  });
+};
+
+const renderInstallmentList = () => {
+  const list = document.getElementById('installmentList');
+  list.innerHTML = '';
+  const sorted = [...state.data.installmentPlans].sort((a, b) =>
+    a.startMonth.localeCompare(b.startMonth)
+  );
+
+  if (sorted.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'list-item';
+    empty.textContent = 'Taksitli alım yok.';
+    list.appendChild(empty);
+    return;
+  }
+
+  sorted.forEach((plan) => {
+    const monthly = plan.totalAmount / plan.months;
+    const item = document.createElement('div');
+    item.className = 'list-item';
+    item.innerHTML = `
+      <div>
+        <strong>${plan.label || 'Taksitli alım'}</strong>
+        <small>${plan.startMonth} · ${plan.months} taksit · ${plan.category || 'Genel'}</small>
+      </div>
+      <div class="list-actions">
+        <span>${formatCurrency(monthly)}</span>
+        <button class="icon-btn" data-id="${plan.id}">Sil</button>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+
+  list.querySelectorAll('button[data-id]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const id = button.getAttribute('data-id');
+      state.data.installmentPlans = state.data.installmentPlans.filter((plan) => plan.id !== id);
       saveAndRender();
     });
   });
@@ -268,6 +460,8 @@ const renderAll = () => {
   renderMonthFilter();
   renderMonthTable();
   renderSalaryList();
+  renderRecurringList();
+  renderInstallmentList();
   renderExpenses();
   renderAnalytics();
 };
@@ -293,6 +487,69 @@ const handleSalarySubmit = (event) => {
     state.data.salaries.push({ id: createId(), startMonth, amount });
   }
   document.getElementById('salaryAmount').value = '';
+  saveAndRender();
+};
+
+const handleRecurringSubmit = (event) => {
+  event.preventDefault();
+  const startMonth = document.getElementById('recurringStart').value;
+  const endMonth = document.getElementById('recurringEnd').value;
+  const amount = parseAmount(document.getElementById('recurringAmount').value);
+  const category = document.getElementById('recurringCategory').value.trim();
+  const note = document.getElementById('recurringNote').value.trim();
+
+  if (!startMonth || amount <= 0) {
+    showToast('Tekrarlayan harcama bilgilerini kontrol edin.');
+    return;
+  }
+
+  if (endMonth && endMonth < startMonth) {
+    showToast('Bitiş ayı başlangıçtan önce olamaz.');
+    return;
+  }
+
+  state.data.recurringExpenses.push({
+    id: createId(),
+    startMonth,
+    endMonth: endMonth || null,
+    amount,
+    category,
+    label: note
+  });
+
+  document.getElementById('recurringAmount').value = '';
+  document.getElementById('recurringCategory').value = '';
+  document.getElementById('recurringNote').value = '';
+  document.getElementById('recurringEnd').value = '';
+  saveAndRender();
+};
+
+const handleInstallmentSubmit = (event) => {
+  event.preventDefault();
+  const startMonth = document.getElementById('installmentStart').value;
+  const totalAmount = parseAmount(document.getElementById('installmentTotal').value);
+  const months = Number.parseInt(document.getElementById('installmentMonths').value, 10);
+  const category = document.getElementById('installmentCategory').value.trim();
+  const note = document.getElementById('installmentNote').value.trim();
+
+  if (!startMonth || totalAmount <= 0 || !Number.isFinite(months) || months < 2) {
+    showToast('Taksit bilgilerini kontrol edin.');
+    return;
+  }
+
+  state.data.installmentPlans.push({
+    id: createId(),
+    startMonth,
+    totalAmount,
+    months,
+    category,
+    label: note
+  });
+
+  document.getElementById('installmentTotal').value = '';
+  document.getElementById('installmentMonths').value = '';
+  document.getElementById('installmentCategory').value = '';
+  document.getElementById('installmentNote').value = '';
   saveAndRender();
 };
 
@@ -327,11 +584,15 @@ const init = async () => {
 
   const today = new Date();
   document.getElementById('expenseDate').value = today.toISOString().split('T')[0];
+  document.getElementById('recurringStart').value = today.toISOString().slice(0, 7);
+  document.getElementById('installmentStart').value = today.toISOString().slice(0, 7);
 
   renderAll();
   renderVersion();
 
   document.getElementById('salaryForm').addEventListener('submit', handleSalarySubmit);
+  document.getElementById('recurringForm').addEventListener('submit', handleRecurringSubmit);
+  document.getElementById('installmentForm').addEventListener('submit', handleInstallmentSubmit);
   document.getElementById('expenseForm').addEventListener('submit', handleExpenseSubmit);
 
   document.getElementById('yearSelect').addEventListener('change', (event) => {

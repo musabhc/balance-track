@@ -10,6 +10,8 @@ const dataFilePath = () => path.join(app.getPath('userData'), 'balance-data.json
 const defaultData = () => ({
   salaries: [],
   expenses: [],
+  recurringExpenses: [],
+  installmentPlans: [],
   settings: {
     currency: 'TRY'
   }
@@ -23,6 +25,8 @@ const ensureDataShape = (data) => {
   return {
     salaries: Array.isArray(data.salaries) ? data.salaries : [],
     expenses: Array.isArray(data.expenses) ? data.expenses : [],
+    recurringExpenses: Array.isArray(data.recurringExpenses) ? data.recurringExpenses : [],
+    installmentPlans: Array.isArray(data.installmentPlans) ? data.installmentPlans : [],
     settings: {
       currency: data.settings && data.settings.currency ? data.settings.currency : 'TRY'
     }

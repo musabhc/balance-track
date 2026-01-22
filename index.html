@@ -114,6 +114,38 @@
             <button class="primary" type="submit">Harcama ekle</button>
           </form>
 
+          <div class="panel-block">
+            <div>
+              <p class="subtitle">Tekrarlayan harcama</p>
+              <h3>Abonelik ve düzenli giderler</h3>
+            </div>
+            <form id="recurringForm" class="form-grid compact">
+              <input type="month" id="recurringStart" required />
+              <input type="number" id="recurringAmount" step="0.01" placeholder="Aylık tutar" required />
+              <input type="text" id="recurringCategory" placeholder="Kategori" />
+              <input type="text" id="recurringNote" placeholder="Açıklama" />
+              <input type="month" id="recurringEnd" placeholder="Bitiş (opsiyonel)" />
+              <button class="ghost" type="submit">Tekrarlayan ekle</button>
+            </form>
+            <div id="recurringList" class="expense-list"></div>
+          </div>
+
+          <div class="panel-block">
+            <div>
+              <p class="subtitle">Taksitli alım</p>
+              <h3>Ürünü taksitlere böl</h3>
+            </div>
+            <form id="installmentForm" class="form-grid compact">
+              <input type="month" id="installmentStart" required />
+              <input type="number" id="installmentTotal" step="0.01" placeholder="Toplam tutar" required />
+              <input type="number" id="installmentMonths" min="2" step="1" placeholder="Taksit sayısı" required />
+              <input type="text" id="installmentCategory" placeholder="Kategori" />
+              <input type="text" id="installmentNote" placeholder="Açıklama" />
+              <button class="ghost" type="submit">Taksit ekle</button>
+            </form>
+            <div id="installmentList" class="expense-list"></div>
+          </div>
+
           <div id="expenseList" class="expense-list"></div>
         </section>
       </main>

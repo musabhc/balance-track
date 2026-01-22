@@ -264,6 +264,10 @@ tbody td {
   margin: 16px 0;
 }
 
+.form-grid.compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .form-grid button {
   grid-column: 1 / -1;
 }
@@ -294,6 +298,14 @@ tbody td {
 .list-actions {
   display: flex;
   gap: 8px;
+}
+
+.tag {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .icon-btn {
@@ -355,5 +367,9 @@ tbody td {
   .topbar {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .form-grid.compact {
+    grid-template-columns: 1fr;
   }
 }

@@ -20,6 +20,7 @@
   "build": {
     "appId": "com.musa.balance-track",
     "productName": "Balance Track",
+    "icon": "build/icon.ico",
     "directories": {
       "output": "dist"
     },

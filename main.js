@@ -74,7 +74,21 @@ const createWindow = () => {
   });
 
   mainWindow.setMenuBarVisibility(false);
-  mainWindow.once('ready-to-show', () => mainWindow.show());
+
+  // Show window when ready or after safety timeout
+  let isShown = false;
+  const showWindow = () => {
+    if (!isShown && mainWindow) {
+      mainWindow.show();
+      isShown = true;
+    }
+  };
+
+  mainWindow.once('ready-to-show', showWindow);
+
+  // Safety timeout: if ready-to-show doesn't fire (e.g. network/font hang), show anyway after 4s
+  setTimeout(showWindow, 4000);
+
   mainWindow.loadFile('index.html');
 };
 

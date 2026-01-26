@@ -282,6 +282,7 @@ const renderSalaryList = () => {
         <small>Yeni maaş: ${formatCurrency(rule.amount)}</small>
       </div>
       <div class="list-actions">
+        <button class="icon-btn edit-btn" data-id="${rule.id}">Düzenle</button>
         <button class="icon-btn" data-id="${rule.id}">Sil</button>
       </div>
     `;
@@ -340,7 +341,8 @@ const renderExpenses = () => {
       <div class="list-actions">
         <span class="tag">${sourceLabel(expense.source)}</span>
         <span>${formatCurrency(expense.amount)}</span>
-        <button class="icon-btn" data-id="${expense.id}" data-source="${expense.source}">Sil</button>
+        <button class="icon-btn edit-btn" data-id="${expense.id}" data-source="${expense.source || 'direct'}">Düzenle</button>
+        <button class="icon-btn" data-id="${expense.id}" data-source="${expense.source || 'direct'}">Sil</button>
       </div>
     `;
     list.appendChild(item);
@@ -654,6 +656,19 @@ const init = async () => {
   document.getElementById('cutoffValue').addEventListener('change', syncSettings);
   document.getElementById('settlementDelay').addEventListener('change', syncSettings);
 
+  document.getElementById('toggleSettings').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('settingsMenu').classList.toggle('show');
+  });
+
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('settingsMenu');
+    const btn = document.getElementById('toggleSettings');
+    if (menu.classList.contains('show') && !menu.contains(e.target) && e.target !== btn) {
+      menu.classList.remove('show');
+    }
+  });
+
   document.getElementById('yearSelect').addEventListener('change', (event) => {
     state.selectedYear = Number(event.target.value);
     state.selectedMonth = 'all';
@@ -701,6 +716,127 @@ const init = async () => {
     if (message) {
       showToast(message);
     }
+  });
+
+  // Modal Setup
+  const editModal = document.getElementById('editModal');
+  const editForm = document.getElementById('editForm');
+  let currentEditingItem = null;
+
+  const closeEditModal = () => {
+    editModal.classList.add('hidden');
+    editForm.innerHTML = '';
+    currentEditingItem = null;
+  };
+
+  document.getElementById('closeModal').addEventListener('click', closeEditModal);
+  document.getElementById('cancelEdit').addEventListener('click', closeEditModal);
+  document.getElementById('saveEdit').addEventListener('click', () => editForm.requestSubmit());
+
+  const setupEditDelegation = (listId, type) => {
+    const list = document.getElementById(listId);
+    list.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.edit-btn');
+      if (!btn) return;
+
+      const id = btn.getAttribute('data-id');
+      const source = btn.getAttribute('data-source');
+      let item;
+
+      if (type === 'salary') item = state.data.salaries.find(s => s.id === id);
+      else if (type === 'recurring') item = state.data.recurringExpenses.find(r => r.id === id);
+      else if (type === 'installment') item = state.data.installmentPlans.find(i => i.id === id);
+      else if (type === 'expense') {
+        if (source !== 'direct') {
+          showToast('Taksit veya düzenli harcamaları ana listelerinden düzenleyin.');
+          return;
+        }
+        item = state.data.expenses.find(ex => ex.id === id);
+      }
+
+      if (item) openEditModal(type, item);
+    });
+  };
+
+  ['salaryList', 'recurringList', 'installmentList', 'expenseList'].forEach(id => {
+    const type = id.replace('List', '').toLowerCase();
+    setupEditDelegation(id, type === 'expens' ? 'expense' : type); // fix typo from list mapping
+  });
+
+  const openEditModal = (type, item) => {
+    currentEditingItem = { type, id: item.id };
+    document.getElementById('modalTitle').textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} Düzenle`;
+    editForm.innerHTML = '';
+
+    const fields = [];
+    if (type === 'salary') {
+      fields.push({ label: 'Başlangıç Ayı', id: 'editSalaryStart', type: 'month', value: item.startMonth });
+      fields.push({ label: 'Tutar', id: 'editSalaryAmount', type: 'number', value: item.amount });
+    } else if (type === 'expense') {
+      fields.push({ label: 'Tarih', id: 'editExpenseDate', type: 'date', value: item.date });
+      fields.push({ label: 'Tutar', id: 'editExpenseAmount', type: 'number', value: item.amount });
+      fields.push({ label: 'Kategori', id: 'editExpenseCategory', type: 'text', value: item.category });
+      fields.push({ label: 'Açıklama', id: 'editExpenseLabel', type: 'text', value: item.label });
+    } else if (type === 'recurring') {
+      fields.push({ label: 'Başlangıç Ayı', id: 'editRecurringStart', type: 'month', value: item.startMonth });
+      fields.push({ label: 'Tutar', id: 'editRecurringAmount', type: 'number', value: item.amount });
+      fields.push({ label: 'Kategori', id: 'editRecurringCategory', type: 'text', value: item.category });
+      fields.push({ label: 'Açıklama', id: 'editRecurringNote', type: 'text', value: item.label });
+      fields.push({ label: 'Bitiş Ayı (Opsiyonel)', id: 'editRecurringEnd', type: 'month', value: item.endMonth || '' });
+    } else if (type === 'installment') {
+      fields.push({ label: 'Alım Tarihi', id: 'editInstallmentDate', type: 'date', value: item.purchaseDate });
+      fields.push({ label: 'Toplam Tutar', id: 'editInstallmentTotal', type: 'number', value: item.totalAmount });
+      fields.push({ label: 'Taksit Sayısı', id: 'editInstallmentMonths', type: 'number', value: item.months });
+      fields.push({ label: 'Kategori', id: 'editInstallmentCategory', type: 'text', value: item.category });
+      fields.push({ label: 'Açıklama', id: 'editInstallmentNote', type: 'text', value: item.label });
+    }
+
+    fields.forEach(f => {
+      const group = document.createElement('div');
+      group.className = 'form-group';
+      group.innerHTML = `<label>${f.label}</label><input type="${f.type}" id="${f.id}" value="${f.value}" required />`;
+      editForm.appendChild(group);
+    });
+
+    editModal.classList.remove('hidden');
+  };
+
+  editForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentEditingItem) return;
+
+    const { type, id } = currentEditingItem;
+    if (type === 'salary') {
+      const item = state.data.salaries.find(s => s.id === id);
+      item.startMonth = document.getElementById('editSalaryStart').value;
+      item.amount = parseAmount(document.getElementById('editSalaryAmount').value);
+    } else if (type === 'expense') {
+      const item = state.data.expenses.find(ex => ex.id === id);
+      item.date = document.getElementById('editExpenseDate').value;
+      item.amount = parseAmount(document.getElementById('editExpenseAmount').value);
+      item.category = document.getElementById('editExpenseCategory').value.trim();
+      item.label = document.getElementById('editExpenseLabel').value.trim();
+    } else if (type === 'recurring') {
+      const item = state.data.recurringExpenses.find(r => r.id === id);
+      item.startMonth = document.getElementById('editRecurringStart').value;
+      item.amount = parseAmount(document.getElementById('editRecurringAmount').value);
+      item.category = document.getElementById('editRecurringCategory').value.trim();
+      item.label = document.getElementById('editRecurringNote').value.trim();
+      item.endMonth = document.getElementById('editRecurringEnd').value || null;
+    } else if (type === 'installment') {
+      const item = state.data.installmentPlans.find(i => i.id === id);
+      const purchaseDate = document.getElementById('editInstallmentDate').value;
+      item.purchaseDate = purchaseDate;
+      item.startMonth = calculateEffectiveMonth(purchaseDate);
+      item.totalAmount = parseAmount(document.getElementById('editInstallmentTotal').value);
+      item.months = parseInt(document.getElementById('editInstallmentMonths').value);
+      item.category = document.getElementById('editInstallmentCategory').value.trim();
+      item.label = document.getElementById('editInstallmentNote').value.trim();
+    }
+
+    await saveAndRender();
+    closeEditModal();
+    showToast('Değişiklikler kaydedildi.');
   });
 };
 

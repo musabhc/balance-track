@@ -16,16 +16,21 @@
         <h1>Gelir ve Harcama Kontrol Merkezi</h1>
       </div>
       <div class="topbar-actions">
-        <div class="settings-group">
-          <label>Kart Ayarları</label>
-          <div class="settings-row">
-            <select id="cutoffMethod">
-              <option value="fixed">Sabit Gün</option>
-              <option value="relative">Ay Sonundan Geriye</option>
-            </select>
-            <input type="number" id="cutoffValue" min="1" max="28" placeholder="Gün/Offset" />
-            <input type="number" id="settlementDelay" min="0" max="5" title="Banka İşlem Süresi (Gün)"
-              placeholder="Banka" />
+        <div class="settings-dropdown">
+          <button class="ghost" id="toggleSettings">Kart Ayarları</button>
+          <div class="dropdown-content" id="settingsMenu">
+            <div class="settings-group">
+              <label>Hesap Kesimi</label>
+              <div class="settings-row">
+                <select id="cutoffMethod">
+                  <option value="fixed">Sabit Gün</option>
+                  <option value="relative">Ay Sonundan Geriye</option>
+                </select>
+                <input type="number" id="cutoffValue" min="1" max="28" placeholder="Gün/Offset" />
+                <input type="number" id="settlementDelay" min="0" max="5" title="Banka İşlem Süresi (Gün)"
+                  placeholder="Banka" />
+              </div>
+            </div>
           </div>
         </div>
         <button class="ghost" id="checkUpdates">Güncellemeleri kontrol et</button>
@@ -47,7 +52,7 @@
           </div>
         </div>
 
-        <div class="table-wrapper">
+        <div class="table-wrapper scrollable">
           <table>
             <thead>
               <tr>
@@ -59,6 +64,20 @@
             </thead>
             <tbody id="monthTable"></tbody>
           </table>
+        </div>
+
+        <div class="panel-block">
+          <div class="panel-header">
+            <div>
+              <p class="subtitle">Harcama geçmişi</p>
+              <h2>Kalem kalem takip</h2>
+            </div>
+            <div class="filter">
+              <label for="monthFilter">Ay</label>
+              <select id="monthFilter"></select>
+            </div>
+          </div>
+          <div id="expenseList" class="expense-list"></div>
         </div>
       </section>
 
@@ -109,17 +128,6 @@
       </section>
 
       <section class="panel expenses">
-        <div class="panel-header">
-          <div>
-            <p class="subtitle">Harcama listesi</p>
-            <h2>Kalem kalem takip</h2>
-          </div>
-          <div class="filter">
-            <label for="monthFilter">Ay</label>
-            <select id="monthFilter"></select>
-          </div>
-        </div>
-
         <form id="expenseForm" class="form-grid">
           <input type="date" id="expenseDate" required />
           <input type="number" id="expenseAmount" step="0.01" placeholder="Tutar" required />
@@ -163,6 +171,23 @@
         <div id="expenseList" class="expense-list"></div>
       </section>
     </main>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="modal hidden">
+    <div class="modal-content panel">
+      <div class="panel-header">
+        <h2 id="modalTitle">Düzenle</h2>
+        <button class="icon-btn" id="closeModal">✕</button>
+      </div>
+      <form id="editForm" class="form-grid">
+        <!-- Form elements will be injected here -->
+      </form>
+      <div class="modal-actions">
+        <button class="ghost" id="cancelEdit">İptal</button>
+        <button class="primary" id="saveEdit">Güncelle</button>
+      </div>
+    </div>
   </div>
 
   <div id="toast" class="toast hidden"></div>

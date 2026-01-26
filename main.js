@@ -115,13 +115,14 @@ const setupAutoUpdater = () => {
     sendUpdateStatus('Yeni sürüm bulundu.');
     const result = await dialog.showMessageBox(mainWindow, {
       type: 'info',
-      buttons: ['İndir ve yükle', 'Sonra'],
+      buttons: ['Şimdi Güncelle', 'Sonra'],
       defaultId: 0,
       cancelId: 1,
       title: 'Güncelleme bulundu',
-      message: 'Yeni bir sürüm bulundu. Şimdi indirmek ister misiniz?'
+      message: 'Yeni bir sürüm bulundu. Arkaplanda indirilip otomatik olarak yüklensin mi?'
     });
     if (result.response === 0) {
+      sendUpdateStatus('Güncelleme indiriliyor...');
       autoUpdater.downloadUpdate();
     }
   });
@@ -136,22 +137,13 @@ const setupAutoUpdater = () => {
 
   autoUpdater.on('download-progress', (progress) => {
     const percent = Math.round(progress.percent);
-    sendUpdateStatus(`Güncelleme indiriliyor: %${percent}`);
+    sendUpdateStatus(`İndiriliyor: %${percent}`);
   });
 
-  autoUpdater.on('update-downloaded', async () => {
-    sendUpdateStatus('Güncelleme indirildi.');
-    const result = await dialog.showMessageBox(mainWindow, {
-      type: 'question',
-      buttons: ['Şimdi yükle', 'Sonra'],
-      defaultId: 0,
-      cancelId: 1,
-      title: 'Güncelleme hazır',
-      message: 'Güncelleme hazır. Şimdi yükleyip yeniden başlatmak ister misiniz?'
-    });
-    if (result.response === 0) {
-      autoUpdater.quitAndInstall();
-    }
+  autoUpdater.on('update-downloaded', () => {
+    sendUpdateStatus('Güncelleme hazır, yükleniyor...');
+    // Auto install without asking again as per user request
+    autoUpdater.quitAndInstall();
   });
 
   if (app.isPackaged) {

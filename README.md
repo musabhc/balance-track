@@ -3,24 +3,26 @@
 
 Balance Track, finansal hayatınızı sadeleştirmek, harcamalarınızı kalem kalem takip etmek ve gelecek aylardaki bütçenizi öngörmek için tasarlanmış modern bir masaüstü uygulamasıdır.
 
-![Dashboard](media/dashboard.png)
+![Dashboard](media/main-ui-1.png)
 
 ## ✨ Öne Çıkan Özellikler
 
 ### 🏠 Merkezi Dashboard
 Tüm finansal durumunuzu tek bir bakışta görün. Yıllık gelir-gider tablosu, aylık kalan bakiye ve ortalama harcama analizleri ile bütçenizin kontrolünü elinize alın.
 
+![Genel Bakış](media/main-ui-2.png)
+
 ### 💳 Gelişmiş Taksit Takibi
 Taksitli alımlarınızı akıllı algoritması ile takip edin. Hesap kesim tarihinize ve banka provizyon sürelerinize göre taksitlerin hangi aya yansıyacağını otomatik olarak hesaplar.
 
-![Taksit Takibi](media/installments.png)
+![Kart Ayarları](media/card-settings.png)
 
 ### 📈 Akıllı Analiz ve Tahmin
 - **Maaş Projeksiyonu:** Belirli aylardan itibaren geçerli olan maaş artışlarını önceden sisteme girin.
 - **Tekrarlayan Harcamalar:** Aboneliklerinizi ve düzenli faturalarınızı tek seferde tanımlayın.
 - **Kategori Bazlı Takip:** En çok hangi kalemlere harcama yaptığınızı görselleştirin.
 
-![Analiz](media/analytics.png)
+![Detaylı Takip](media/main-ui-3.png)
 
 ## 🛠️ Teknik Altyapı
 - **Framework:** Electron.js (Windows, macOS, Linux desteği)

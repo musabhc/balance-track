@@ -77,6 +77,36 @@ body::before {
   color: var(--muted);
 }
 
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-right: 12px;
+}
+
+.settings-group label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+
+.settings-row {
+  display: flex;
+  gap: 4px;
+}
+
+.settings-row select,
+.settings-row input {
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+.settings-row input[type="number"] {
+  width: 60px;
+}
+
 .topbar-actions {
   display: flex;
   gap: 10px;
@@ -278,6 +308,30 @@ tbody td {
   flex-direction: column;
   gap: 10px;
   margin-top: 16px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.salary-list::-webkit-scrollbar,
+.expense-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.salary-list::-webkit-scrollbar-track,
+.expense-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.salary-list::-webkit-scrollbar-thumb,
+.expense-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+
+.salary-list::-webkit-scrollbar-thumb:hover,
+.expense-list::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 .list-item {

@@ -1,158 +1,173 @@
 <!DOCTYPE html>
 <html lang="tr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Balance Track</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div class="app">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Balance Track</p>
-          <h1>Gelir ve Harcama Kontrol Merkezi</h1>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Balance Track</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Balance Track</p>
+        <h1>Gelir ve Harcama Kontrol Merkezi</h1>
+      </div>
+      <div class="topbar-actions">
+        <div class="settings-group">
+          <label>Kart Ayarları</label>
+          <div class="settings-row">
+            <select id="cutoffMethod">
+              <option value="fixed">Sabit Gün</option>
+              <option value="relative">Ay Sonundan Geriye</option>
+            </select>
+            <input type="number" id="cutoffValue" min="1" max="28" placeholder="Gün/Offset" />
+            <input type="number" id="settlementDelay" min="0" max="5" title="Banka İşlem Süresi (Gün)"
+              placeholder="Banka" />
+          </div>
         </div>
-        <div class="topbar-actions">
-          <button class="ghost" id="checkUpdates">Güncellemeleri kontrol et</button>
-          <button class="primary" id="backupExport">Yedek dışa aktar</button>
-          <button class="ghost" id="backupImport">Yedek içe aktar</button>
+        <button class="ghost" id="checkUpdates">Güncellemeleri kontrol et</button>
+        <button class="primary" id="backupExport">Yedek dışa aktar</button>
+        <button class="ghost" id="backupImport">Yedek içe aktar</button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="panel summary">
+        <div class="panel-header">
+          <div>
+            <p class="subtitle">Yıllık özet</p>
+            <h2>Gelir, harcama ve kalan para</h2>
+          </div>
+          <div class="year-select">
+            <label for="yearSelect">Yıl</label>
+            <select id="yearSelect"></select>
+          </div>
         </div>
-      </header>
 
-      <main class="grid">
-        <section class="panel summary">
-          <div class="panel-header">
-            <div>
-              <p class="subtitle">Yıllık özet</p>
-              <h2>Gelir, harcama ve kalan para</h2>
-            </div>
-            <div class="year-select">
-              <label for="yearSelect">Yıl</label>
-              <select id="yearSelect"></select>
-            </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Ay</th>
+                <th>Maaş</th>
+                <th>Toplam harcama</th>
+                <th>Kalan</th>
+              </tr>
+            </thead>
+            <tbody id="monthTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel analytics">
+        <div class="panel-header">
+          <div>
+            <p class="subtitle">Analiz</p>
+            <h2>Otomatik özet</h2>
           </div>
+          <div class="badge" id="appVersion"></div>
+        </div>
 
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Ay</th>
-                  <th>Maaş</th>
-                  <th>Toplam harcama</th>
-                  <th>Kalan</th>
-                </tr>
-              </thead>
-              <tbody id="monthTable"></tbody>
-            </table>
+        <div class="cards">
+          <div class="card">
+            <p>Bu ay kalan</p>
+            <h3 id="currentRemaining">-</h3>
           </div>
-        </section>
-
-        <section class="panel analytics">
-          <div class="panel-header">
-            <div>
-              <p class="subtitle">Analiz</p>
-              <h2>Otomatik özet</h2>
-            </div>
-            <div class="badge" id="appVersion"></div>
+          <div class="card">
+            <p>Bu ay harcama</p>
+            <h3 id="currentSpend">-</h3>
           </div>
-
-          <div class="cards">
-            <div class="card">
-              <p>Bu ay kalan</p>
-              <h3 id="currentRemaining">-</h3>
-            </div>
-            <div class="card">
-              <p>Bu ay harcama</p>
-              <h3 id="currentSpend">-</h3>
-            </div>
-            <div class="card">
-              <p>Yıllık toplam kalan</p>
-              <h3 id="yearRemaining">-</h3>
-            </div>
-            <div class="card">
-              <p>Ortalama aylık harcama</p>
-              <h3 id="avgSpend">-</h3>
-            </div>
-            <div class="card">
-              <p>En çok harcama yapılan kategori</p>
-              <h3 id="topCategory">-</h3>
-            </div>
+          <div class="card">
+            <p>Yıllık toplam kalan</p>
+            <h3 id="yearRemaining">-</h3>
           </div>
-
-          <div class="panel-block">
-            <div>
-              <p class="subtitle">Maaş güncelle</p>
-              <h3>Belirli bir aydan itibaren yeni maaş</h3>
-            </div>
-            <form id="salaryForm" class="form-row">
-              <input type="month" id="salaryStart" required />
-              <input type="number" id="salaryAmount" step="0.01" placeholder="Maaş tutarı" required />
-              <button class="primary" type="submit">Kaydet</button>
-            </form>
-            <div id="salaryList" class="salary-list"></div>
+          <div class="card">
+            <p>Ortalama aylık harcama</p>
+            <h3 id="avgSpend">-</h3>
           </div>
-        </section>
-
-        <section class="panel expenses">
-          <div class="panel-header">
-            <div>
-              <p class="subtitle">Harcama listesi</p>
-              <h2>Kalem kalem takip</h2>
-            </div>
-            <div class="filter">
-              <label for="monthFilter">Ay</label>
-              <select id="monthFilter"></select>
-            </div>
+          <div class="card">
+            <p>En çok harcama yapılan kategori</p>
+            <h3 id="topCategory">-</h3>
           </div>
+        </div>
 
-          <form id="expenseForm" class="form-grid">
-            <input type="date" id="expenseDate" required />
-            <input type="number" id="expenseAmount" step="0.01" placeholder="Tutar" required />
-            <input type="text" id="expenseCategory" placeholder="Kategori" />
-            <input type="text" id="expenseNote" placeholder="Açıklama" />
-            <button class="primary" type="submit">Harcama ekle</button>
+        <div class="panel-block">
+          <div>
+            <p class="subtitle">Maaş güncelle</p>
+            <h3>Belirli bir aydan itibaren yeni maaş</h3>
+          </div>
+          <form id="salaryForm" class="form-row">
+            <input type="month" id="salaryStart" required />
+            <input type="number" id="salaryAmount" step="0.01" placeholder="Maaş tutarı" required />
+            <button class="primary" type="submit">Kaydet</button>
           </form>
+          <div id="salaryList" class="salary-list"></div>
+        </div>
+      </section>
 
-          <div class="panel-block">
-            <div>
-              <p class="subtitle">Tekrarlayan harcama</p>
-              <h3>Abonelik ve düzenli giderler</h3>
-            </div>
-            <form id="recurringForm" class="form-grid compact">
-              <input type="month" id="recurringStart" required />
-              <input type="number" id="recurringAmount" step="0.01" placeholder="Aylık tutar" required />
-              <input type="text" id="recurringCategory" placeholder="Kategori" />
-              <input type="text" id="recurringNote" placeholder="Açıklama" />
-              <input type="month" id="recurringEnd" placeholder="Bitiş (opsiyonel)" />
-              <button class="ghost" type="submit">Tekrarlayan ekle</button>
-            </form>
-            <div id="recurringList" class="expense-list"></div>
+      <section class="panel expenses">
+        <div class="panel-header">
+          <div>
+            <p class="subtitle">Harcama listesi</p>
+            <h2>Kalem kalem takip</h2>
           </div>
-
-          <div class="panel-block">
-            <div>
-              <p class="subtitle">Taksitli alım</p>
-              <h3>Ürünü taksitlere böl</h3>
-            </div>
-            <form id="installmentForm" class="form-grid compact">
-              <input type="month" id="installmentStart" required />
-              <input type="number" id="installmentTotal" step="0.01" placeholder="Toplam tutar" required />
-              <input type="number" id="installmentMonths" min="2" step="1" placeholder="Taksit sayısı" required />
-              <input type="text" id="installmentCategory" placeholder="Kategori" />
-              <input type="text" id="installmentNote" placeholder="Açıklama" />
-              <button class="ghost" type="submit">Taksit ekle</button>
-            </form>
-            <div id="installmentList" class="expense-list"></div>
+          <div class="filter">
+            <label for="monthFilter">Ay</label>
+            <select id="monthFilter"></select>
           </div>
+        </div>
 
-          <div id="expenseList" class="expense-list"></div>
-        </section>
-      </main>
-    </div>
+        <form id="expenseForm" class="form-grid">
+          <input type="date" id="expenseDate" required />
+          <input type="number" id="expenseAmount" step="0.01" placeholder="Tutar" required />
+          <input type="text" id="expenseCategory" placeholder="Kategori" />
+          <input type="text" id="expenseNote" placeholder="Açıklama" />
+          <button class="primary" type="submit">Harcama ekle</button>
+        </form>
 
-    <div id="toast" class="toast hidden"></div>
+        <div class="panel-block">
+          <div>
+            <p class="subtitle">Tekrarlayan harcama</p>
+            <h3>Abonelik ve düzenli giderler</h3>
+          </div>
+          <form id="recurringForm" class="form-grid compact">
+            <input type="month" id="recurringStart" required />
+            <input type="number" id="recurringAmount" step="0.01" placeholder="Aylık tutar" required />
+            <input type="text" id="recurringCategory" placeholder="Kategori" />
+            <input type="text" id="recurringNote" placeholder="Açıklama" />
+            <input type="month" id="recurringEnd" placeholder="Bitiş (opsiyonel)" />
+            <button class="ghost" type="submit">Tekrarlayan ekle</button>
+          </form>
+          <div id="recurringList" class="expense-list"></div>
+        </div>
 
-    <script src="renderer.js"></script>
-  </body>
+        <div class="panel-block">
+          <div>
+            <p class="subtitle">Taksitli alım</p>
+            <h3>Ürünü taksitlere böl</h3>
+          </div>
+          <form id="installmentForm" class="form-grid compact">
+            <input type="date" id="installmentStart" required />
+            <input type="number" id="installmentTotal" step="0.01" placeholder="Toplam tutar" required />
+            <input type="number" id="installmentMonths" min="2" step="1" placeholder="Taksit sayısı" required />
+            <input type="text" id="installmentCategory" placeholder="Kategori" />
+            <input type="text" id="installmentNote" placeholder="Açıklama" />
+            <button class="ghost" type="submit">Taksit ekle</button>
+          </form>
+          <div id="installmentList" class="expense-list"></div>
+        </div>
+
+        <div id="expenseList" class="expense-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="renderer.js"></script>
+</body>
+
 </html>

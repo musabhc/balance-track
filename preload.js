@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('api', {
   dataImport: () => ipcRenderer.invoke('data:import'),
   appVersion: () => ipcRenderer.invoke('app:getVersion'),
   updateCheck: () => ipcRenderer.invoke('update:check'),
+  confirm: (message, title) => ipcRenderer.invoke('app:confirm', { message, title }),
   onUpdateStatus: (callback) => {
     ipcRenderer.on('update:status', (_, message) => callback(message));
   }

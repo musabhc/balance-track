@@ -13,7 +13,10 @@ const defaultData = () => ({
   recurringExpenses: [],
   installmentPlans: [],
   settings: {
-    currency: 'TRY'
+    currency: 'TRY',
+    cutoffMethod: 'fixed', // 'fixed' or 'relative'
+    cutoffValue: 19,
+    settlementDelay: 1
   }
 });
 
@@ -28,7 +31,10 @@ const ensureDataShape = (data) => {
     recurringExpenses: Array.isArray(data.recurringExpenses) ? data.recurringExpenses : [],
     installmentPlans: Array.isArray(data.installmentPlans) ? data.installmentPlans : [],
     settings: {
-      currency: data.settings && data.settings.currency ? data.settings.currency : 'TRY'
+      currency: data.settings && data.settings.currency ? data.settings.currency : 'TRY',
+      cutoffMethod: data.settings && data.settings.cutoffMethod ? data.settings.cutoffMethod : 'fixed',
+      cutoffValue: data.settings && typeof data.settings.cutoffValue === 'number' ? data.settings.cutoffValue : 19,
+      settlementDelay: data.settings && typeof data.settings.settlementDelay === 'number' ? data.settings.settlementDelay : 1
     }
   };
 };
@@ -204,6 +210,18 @@ ipcMain.handle('data:import', async () => {
 });
 
 ipcMain.handle('app:getVersion', () => app.getVersion());
+
+ipcMain.handle('app:confirm', async (_, { message, title }) => {
+  const { response } = await dialog.showMessageBox(mainWindow, {
+    type: 'question',
+    buttons: ['Evet', 'Hayır'],
+    defaultId: 0,
+    cancelId: 1,
+    title: title || 'Onay',
+    message: message
+  });
+  return response === 0;
+});
 
 ipcMain.handle('update:check', async () => {
   if (!app.isPackaged) {

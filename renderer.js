@@ -56,6 +56,31 @@ const monthsBetween = (startKey, endKey) => {
   return (end.year - start.year) * 12 + (end.month - start.month);
 };
 
+const calculateEffectiveMonth = (purchaseDateStr) => {
+  const date = new Date(purchaseDateStr);
+  const settings = state.data.settings;
+
+  // Apply bank settlement delay
+  const effectiveDate = new Date(date);
+  effectiveDate.setDate(date.getDate() + (settings.settlementDelay || 0));
+
+  // Calculate cutoff for the effective date's month
+  let cutoffDay;
+  if (settings.cutoffMethod === 'relative') {
+    const lastDay = new Date(effectiveDate.getFullYear(), effectiveDate.getMonth() + 1, 0).getDate();
+    cutoffDay = lastDay - (settings.cutoffValue || 0);
+  } else {
+    cutoffDay = settings.cutoffValue || 19;
+  }
+
+  const resultDate = new Date(effectiveDate);
+  if (effectiveDate.getDate() > cutoffDay) {
+    resultDate.setMonth(effectiveDate.getMonth() + 1);
+  }
+
+  return monthKey(resultDate.getFullYear(), resultDate.getMonth());
+};
+
 const createId = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
@@ -264,10 +289,13 @@ const renderSalaryList = () => {
   });
 
   list.querySelectorAll('button[data-id]').forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
       const id = button.getAttribute('data-id');
-      state.data.salaries = state.data.salaries.filter((rule) => rule.id !== id);
-      saveAndRender();
+      const confirmed = await window.api.confirm('Bu maaş kaydını silmek istediğinizden emin misiniz?');
+      if (confirmed) {
+        state.data.salaries = state.data.salaries.filter((rule) => rule.id !== id);
+        saveAndRender();
+      }
     });
   });
 };
@@ -319,9 +347,12 @@ const renderExpenses = () => {
   });
 
   list.querySelectorAll('button[data-id]').forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
       const id = button.getAttribute('data-id');
       const source = button.getAttribute('data-source');
+      const confirmed = await window.api.confirm('Bu harcamayı silmek istediğinizden emin misiniz?');
+      if (!confirmed) return;
+
       if (source === 'recurring') {
         state.data.recurringExpenses = state.data.recurringExpenses.filter((rule) => rule.id !== id);
         showToast('Tekrarlayan harcama silindi.');
@@ -369,10 +400,13 @@ const renderRecurringList = () => {
   });
 
   list.querySelectorAll('button[data-id]').forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
       const id = button.getAttribute('data-id');
-      state.data.recurringExpenses = state.data.recurringExpenses.filter((rule) => rule.id !== id);
-      saveAndRender();
+      const confirmed = await window.api.confirm('Bu tekrarlayan harcamayı silmek istediğinizden emin misiniz?');
+      if (confirmed) {
+        state.data.recurringExpenses = state.data.recurringExpenses.filter((rule) => rule.id !== id);
+        saveAndRender();
+      }
     });
   });
 };
@@ -410,10 +444,13 @@ const renderInstallmentList = () => {
   });
 
   list.querySelectorAll('button[data-id]').forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
       const id = button.getAttribute('data-id');
-      state.data.installmentPlans = state.data.installmentPlans.filter((plan) => plan.id !== id);
-      saveAndRender();
+      const confirmed = await window.api.confirm('Bu taksit planını silmek istediğinizden emin misiniz?');
+      if (confirmed) {
+        state.data.installmentPlans = state.data.installmentPlans.filter((plan) => plan.id !== id);
+        saveAndRender();
+      }
     });
   });
 };
@@ -455,7 +492,15 @@ const renderVersion = async () => {
   badge.textContent = `v${version}`;
 };
 
+const renderSettings = () => {
+  const s = state.data.settings;
+  document.getElementById('cutoffMethod').value = s.cutoffMethod;
+  document.getElementById('cutoffValue').value = s.cutoffValue;
+  document.getElementById('settlementDelay').value = s.settlementDelay;
+};
+
 const renderAll = () => {
+  renderSettings();
   renderYearOptions();
   renderMonthFilter();
   renderMonthTable();
@@ -526,19 +571,22 @@ const handleRecurringSubmit = (event) => {
 
 const handleInstallmentSubmit = (event) => {
   event.preventDefault();
-  const startMonth = document.getElementById('installmentStart').value;
+  const purchaseDate = document.getElementById('installmentStart').value;
   const totalAmount = parseAmount(document.getElementById('installmentTotal').value);
   const months = Number.parseInt(document.getElementById('installmentMonths').value, 10);
   const category = document.getElementById('installmentCategory').value.trim();
   const note = document.getElementById('installmentNote').value.trim();
 
-  if (!startMonth || totalAmount <= 0 || !Number.isFinite(months) || months < 2) {
+  if (!purchaseDate || totalAmount <= 0 || !Number.isFinite(months) || months < 2) {
     showToast('Taksit bilgilerini kontrol edin.');
     return;
   }
 
+  const startMonth = calculateEffectiveMonth(purchaseDate);
+
   state.data.installmentPlans.push({
     id: createId(),
+    purchaseDate,
     startMonth,
     totalAmount,
     months,
@@ -585,7 +633,7 @@ const init = async () => {
   const today = new Date();
   document.getElementById('expenseDate').value = today.toISOString().split('T')[0];
   document.getElementById('recurringStart').value = today.toISOString().slice(0, 7);
-  document.getElementById('installmentStart').value = today.toISOString().slice(0, 7);
+  document.getElementById('installmentStart').value = today.toISOString().split('T')[0];
 
   renderAll();
   renderVersion();
@@ -594,6 +642,17 @@ const init = async () => {
   document.getElementById('recurringForm').addEventListener('submit', handleRecurringSubmit);
   document.getElementById('installmentForm').addEventListener('submit', handleInstallmentSubmit);
   document.getElementById('expenseForm').addEventListener('submit', handleExpenseSubmit);
+
+  const syncSettings = () => {
+    state.data.settings.cutoffMethod = document.getElementById('cutoffMethod').value;
+    state.data.settings.cutoffValue = Number(document.getElementById('cutoffValue').value);
+    state.data.settings.settlementDelay = Number(document.getElementById('settlementDelay').value);
+    saveAndRender();
+  };
+
+  document.getElementById('cutoffMethod').addEventListener('change', syncSettings);
+  document.getElementById('cutoffValue').addEventListener('change', syncSettings);
+  document.getElementById('settlementDelay').addEventListener('change', syncSettings);
 
   document.getElementById('yearSelect').addEventListener('change', (event) => {
     state.selectedYear = Number(event.target.value);
@@ -617,6 +676,13 @@ const init = async () => {
     const result = await window.api.dataImport();
     if (result.status === 'loaded') {
       state.data = result.data;
+
+      // Auto-switch to a year that has data
+      const yearsWithData = getYearRange().filter(y => y !== new Date().getFullYear());
+      if (yearsWithData.length > 0) {
+        state.selectedYear = Math.max(...yearsWithData);
+      }
+
       await saveAndRender();
       showToast('Yedek yüklendi.');
     } else if (result.status === 'error') {
